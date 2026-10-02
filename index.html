@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Gut Log</title>
+  <meta name="description" content="Private, on-device tracker for bowel movements using the Bristol stool scale.">
+  <meta name="theme-color" content="#2a78d6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Gut Log">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <h1>Gut Log</h1>
+    <span class="header-sub" id="header-sub"></span>
+  </header>
+
+  <main>
+    <!-- LOG -->
+    <section id="view-log" class="view" aria-labelledby="log-title">
+      <h2 id="log-title" class="view-title">Log a bowel movement</h2>
+      <form id="bm-form" novalidate>
+        <input type="hidden" name="id">
+
+        <div class="field">
+          <label for="f-when" class="label">When</label>
+          <div class="row">
+            <input id="f-when" name="when" type="datetime-local" required>
+            <button type="button" class="btn btn-ghost" id="btn-now">Now</button>
+          </div>
+        </div>
+
+        <fieldset class="field">
+          <legend class="label">Bristol stool type <span class="req">required</span></legend>
+          <div class="bristol-grid" id="bristol-grid"></div>
+          <p class="hint" id="bristol-hint">Tap the type that best matches.</p>
+        </fieldset>
+
+        <div class="field">
+          <label for="f-pain" class="label">Pain <output id="pain-out" for="f-pain" class="pain-out">0 · None</output></label>
+          <input id="f-pain" name="pain" type="range" min="0" max="10" step="1" value="0">
+          <div class="scale-ends"><span>0 none</span><span>10 worst</span></div>
+        </div>
+
+        <fieldset class="field">
+          <legend class="label">Urgency</legend>
+          <div class="segmented" id="urgency-group"></div>
+        </fieldset>
+
+        <fieldset class="field">
+          <legend class="label">Anything abnormal?</legend>
+          <div class="chips" id="abn-group"></div>
+        </fieldset>
+
+        <fieldset class="field">
+          <legend class="label">Color <span class="opt">optional</span></legend>
+          <div class="chips" id="color-group"></div>
+        </fieldset>
+
+        <div class="field">
+          <label for="f-notes" class="label">Notes <span class="opt">optional</span></label>
+          <textarea id="f-notes" name="notes" rows="3" placeholder="Anything else worth remembering…"></textarea>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="btn-save">Save entry</button>
+          <button type="button" class="btn btn-ghost hidden" id="btn-cancel">Cancel</button>
+          <button type="button" class="btn btn-danger hidden" id="btn-delete">Delete</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- HISTORY -->
+    <section id="view-history" class="view hidden" aria-labelledby="history-title">
+      <h2 id="history-title" class="view-title">History</h2>
+      <div id="history-list"></div>
+    </section>
+
+    <!-- INSIGHTS -->
+    <section id="view-insights" class="view hidden" aria-labelledby="insights-title">
+      <div class="view-title-row">
+        <h2 id="insights-title" class="view-title">Insights</h2>
+        <div class="segmented compact" id="range-group" role="radiogroup" aria-label="Time range"></div>
+      </div>
+      <div id="insights"></div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section id="view-settings" class="view hidden" aria-labelledby="settings-title">
+      <h2 id="settings-title" class="view-title">Data &amp; settings</h2>
+
+      <div class="card">
+        <h3>Your data stays on this device</h3>
+        <p>Entries are saved in this browser only — nothing is uploaded anywhere. Export a backup regularly, and use it to move your log to another phone or browser.</p>
+        <div class="btn-stack">
+          <button class="btn" id="btn-export-json">Download backup (JSON)</button>
+          <button class="btn" id="btn-export-csv">Download spreadsheet (CSV)</button>
+          <label class="btn" for="f-import">Restore / merge from backup</label>
+          <input type="file" id="f-import" accept="application/json,.json" class="visually-hidden">
+        </div>
+        <p class="hint" id="data-summary"></p>
+      </div>
+
+      <div class="card">
+        <h3>Appearance</h3>
+        <div class="segmented" id="theme-group"></div>
+      </div>
+
+      <div class="card">
+        <h3>Danger zone</h3>
+        <button class="btn btn-danger" id="btn-clear">Delete all entries</button>
+      </div>
+
+      <div class="card subtle">
+        <h3>About the Bristol scale</h3>
+        <p>Types 1–2 suggest constipation, 3–4 are typical, and 5–7 lean toward diarrhea.</p>
+        <p class="hint">This app is a personal log, not medical advice. Contact your care team for heavy bleeding, black/tarry stool, fever, severe or worsening pain, or signs of dehydration.</p>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabbar" aria-label="Main">
+    <button data-view="log" class="tab active" aria-current="page">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Log</span>
+    </button>
+    <button data-view="history" class="tab">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>History</span>
+    </button>
+    <button data-view="insights" class="tab">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V12M12 20V5M19 20v-9"/></svg><span>Insights</span>
+    </button>
+    <button data-view="settings" class="tab">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg><span>Data</span>
+    </button>
+  </nav>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="tooltip" class="tooltip" role="tooltip"></div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
