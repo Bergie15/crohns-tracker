@@ -93,6 +93,8 @@ main { max-width: 640px; margin: 0 auto; padding: 16px; }
 .view-title { font-size: 1.35rem; margin: 4px 0 16px; letter-spacing: -.01em; }
 .view-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
 .view-title-row .view-title { margin: 0; }
+#range-group { width: 100%; display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+#range-group span { display: block; text-align: center; padding: 6px 2px; white-space: nowrap; }
 
 /* Form */
 fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
@@ -195,7 +197,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; }
 
 /* Insights */
 .tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; }
-@media (min-width: 520px) { .tiles { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 520px) { .tiles { grid-template-columns: repeat(3, 1fr); } }
 .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
 .tile-label { font-size: .78rem; color: var(--text-2); }
 .tile-value { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
@@ -217,6 +219,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 28px; }
 .hbar-label { color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hbar-track { height: 14px; }
 .hbar-fill { height: 100%; background: var(--series-1); border-radius: 0 4px 4px 0; min-width: 2px; }
+.hbar-row.wide-val { grid-template-columns: 140px 1fr 56px; }
+.hbar-fill.flag { background: var(--danger); }
+.card-hint { margin: -4px 0 10px; font-size: .8rem; }
+.subhead { margin: 16px 0 8px; font-size: .9rem; }
+.range-note { margin: -6px 0 12px; }
 .hbar-val { text-align: right; font-variant-numeric: tabular-nums; color: var(--text); }
 
 details.table-view { margin-top: 10px; font-size: .85rem; }

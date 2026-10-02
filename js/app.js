@@ -23,7 +23,7 @@
   // ---------- Reference data ----------
 
   const BRISTOL = [
-    { n: 1, name: 'Separate hard lumps', desc: 'Hard lumps, like nuts — hard to pass', group: 'Constipated' },
+    { n: 1, name: 'Separate hard lumps', short: 'Hard lumps', desc: 'Hard lumps, like nuts — hard to pass', group: 'Constipated' },
     { n: 2, name: 'Lumpy sausage', desc: 'Sausage-shaped but lumpy', group: 'Constipated' },
     { n: 3, name: 'Cracked sausage', desc: 'Sausage with cracks on the surface', group: 'Typical' },
     { n: 4, name: 'Smooth snake', desc: 'Smooth and soft, like a snake', group: 'Typical' },
@@ -384,12 +384,21 @@
   // ---------- Insights ----------
 
   const RANGES = [
+    { id: '1', label: 'Today', days: 1 },
     { id: '7', label: '7 days', days: 7 },
     { id: '30', label: '30 days', days: 30 },
-    { id: '90', label: '90 days', days: 90 }
+    { id: '90', label: '90 days', days: 90 },
+    { id: 'all', label: 'All time', days: Infinity }
   ];
-  let rangeId = prefGet(RANGE_KEY, '30');
-  if (!RANGES.some(r => r.id === rangeId)) rangeId = '30';
+  let rangeId = prefGet(RANGE_KEY, '7');
+  if (!RANGES.some(r => r.id === rangeId)) rangeId = '7';
+
+  const TIME_OF_DAY = [
+    { label: 'Night (12–6am)', from: 0 },
+    { label: 'Morning (6am–12)', from: 6 },
+    { label: 'Afternoon (12–6pm)', from: 12 },
+    { label: 'Evening (6pm–12)', from: 18 }
+  ];
 
   function buildRangeGroup() {
     $('#range-group').innerHTML = RANGES.map(r => `
@@ -399,6 +408,16 @@
       prefSet(RANGE_KEY, rangeId);
       renderInsights();
     });
+  }
+
+  // Number of days in the range that you've actually been logging, so days
+  // before your first entry don't drag averages down.
+  function trackedSpan(rangeDays) {
+    const all = bmEntries();
+    if (!all.length) return { days: Math.min(rangeDays, 1), clipped: false };
+    const first = startOfDay(new Date(all[all.length - 1].ts));
+    const sinceFirst = Math.round((startOfDay(new Date()) - first) / 86400000) + 1;
+    return { days: Math.max(1, Math.min(rangeDays, sinceFirst)), clipped: sinceFirst < rangeDays && rangeDays !== Infinity, first };
   }
 
   function computeDays(days) {
@@ -419,6 +438,7 @@
     buckets.forEach(b => {
       b.count = b.items.length;
       b.avgPain = b.count ? round1(b.items.reduce((s, e) => s + (e.pain || 0), 0) / b.count) : null;
+      b.maxPain = b.count ? Math.max(...b.items.map(e => e.pain || 0)) : null;
       b.avgBristol = b.count ? round1(b.items.reduce((s, e) => s + e.bristol, 0) / b.count) : null;
       b.blood = b.items.some(hasBlood);
     });
@@ -427,35 +447,83 @@
 
   function renderInsights() {
     const range = RANGES.find(r => r.id === rangeId);
-    const { buckets, entries } = computeDays(range.days);
+    const span = trackedSpan(range.days);
+    const D = span.days;
+    const { buckets, entries } = computeDays(D);
     const root = $('#insights');
+    const periodText = range.days === 1 ? 'today' : range.days === Infinity ? 'yet' : `in the last ${range.days} days`;
 
     if (!entries.length) {
-      root.innerHTML = `<div class="empty"><p>No entries in the last ${range.days} days.</p><button class="btn btn-primary" data-goto="log">Log an entry</button></div>`;
+      root.innerHTML = `<div class="empty"><p>No entries ${periodText}.</p><button class="btn btn-primary" data-goto="log">Log an entry</button></div>`;
+      lastBuckets = null;
       return;
     }
 
     const n = entries.length;
-    const avgPerDay = round1(n / range.days);
+    const multiDay = D > 1;
+    const avgPerDay = round1(n / D);
+    const maxInDay = Math.max(...buckets.map(b => b.count));
     const avgBristol = round1(entries.reduce((s, e) => s + e.bristol, 0) / n);
     const avgPain = round1(entries.reduce((s, e) => s + (e.pain || 0), 0) / n);
     const maxPain = Math.max(...entries.map(e => e.pain || 0));
     const typeCounts = [0, 0, 0, 0, 0, 0, 0];
     entries.forEach(e => typeCounts[e.bristol - 1]++);
     const mode = typeCounts.indexOf(Math.max(...typeCounts)) + 1;
-    const bloodDays = buckets.filter(b => b.blood).length;
     const looseShare = Math.round(100 * entries.filter(e => e.bristol >= 6).length / n);
 
-    const abnCounts = ABNORMALITIES.map(a => ({ label: a.label, count: entries.filter(e => (e.abnormalities || []).includes(a.id)).length }))
+    // Count of days on which at least one entry matches.
+    const daysWith = pred => buckets.filter(b => b.items.some(pred)).length;
+    const bloodDays = daysWith(hasBlood);
+    const painDays = daysWith(e => e.pain >= 1);
+    const has = id => e => (e.abnormalities || []).includes(id);
+
+    const dayRows = [
+      { label: 'Any pain (1+)', count: painDays },
+      { label: 'Moderate pain (4+)', count: daysWith(e => e.pain >= 4) },
+      { label: 'Severe pain (7+)', count: daysWith(e => e.pain >= 7) },
+      { label: 'Blood', count: bloodDays, flag: true },
+      { label: 'Mucus', count: daysWith(has('mucus')) },
+      { label: 'Urgent / accident', count: daysWith(e => e.urgency >= 2) },
+      { label: 'Accident', count: daysWith(e => e.urgency === 3) },
+      { label: 'Loose (type 6–7)', count: daysWith(e => e.bristol >= 6) },
+      { label: 'Hard (type 1–2)', count: daysWith(e => e.bristol <= 2) },
+      { label: 'No BM that day', count: buckets.filter(b => !b.count).length }
+    ];
+    const typeDayRows = BRISTOL.map(b => ({ label: `${b.n} · ${b.short || b.name}`, count: daysWith(e => e.bristol === b.n) }));
+
+    const todCounts = TIME_OF_DAY.map((t, i) => ({
+      label: t.label,
+      count: entries.filter(e => {
+        const h = new Date(e.ts).getHours();
+        return h >= t.from && h < (TIME_OF_DAY[i + 1] ? TIME_OF_DAY[i + 1].from : 24);
+      }).length
+    }));
+
+    const abnCounts = ABNORMALITIES.map(a => ({ label: a.label, count: entries.filter(has(a.id)).length }))
       .filter(a => a.count > 0)
       .sort((a, b) => b.count - a.count);
 
+    const lastTs = new Date(entries[0].ts);
+    const ofDays = `of ${D} day${D === 1 ? '' : 's'}`;
+
     root.innerHTML = `
+      ${span.clipped || range.days === Infinity ? `<p class="hint range-note">Covering ${D} day${D === 1 ? '' : 's'} since your first entry on ${esc(span.first.toLocaleDateString())}.</p>` : ''}
       <div class="tiles">
-        <div class="tile"><div class="tile-label">Bowel movements</div><div class="tile-value">${n}</div><div class="tile-sub">${avgPerDay} per day</div></div>
+        <div class="tile"><div class="tile-label">Bowel movements</div><div class="tile-value">${n}</div><div class="tile-sub">${multiDay ? `over ${D} days` : `last at ${esc(fmtTime(lastTs))}`}</div></div>
+        ${multiDay ? `<div class="tile"><div class="tile-label">Per day</div><div class="tile-value">${avgPerDay}</div><div class="tile-sub">most in one day: ${maxInDay}</div></div>` : ''}
         <div class="tile"><div class="tile-label">Avg Bristol type</div><div class="tile-value">${avgBristol}</div><div class="tile-sub">most often type ${mode} · ${looseShare}% type 6–7</div></div>
         <div class="tile"><div class="tile-label">Avg pain</div><div class="tile-value">${avgPain}</div><div class="tile-sub">peak ${maxPain}/10</div></div>
-        <div class="tile ${bloodDays ? 'alert' : ''}"><div class="tile-label">Days with blood</div><div class="tile-value">${bloodDays}</div><div class="tile-sub">of ${range.days} days</div></div>
+        ${multiDay ? `<div class="tile"><div class="tile-label">Days with pain</div><div class="tile-value">${painDays}</div><div class="tile-sub">${ofDays}</div></div>` : ''}
+        <div class="tile ${bloodDays ? 'alert' : ''}"><div class="tile-label">${multiDay ? 'Days with blood' : 'Blood'}</div><div class="tile-value">${multiDay ? bloodDays : (bloodDays ? 'Yes' : 'No')}</div><div class="tile-sub">${multiDay ? ofDays : 'today'}</div></div>
+      </div>
+
+      ${multiDay ? `
+      <div class="card">
+        <h3>Days with…</h3>
+        <p class="hint card-hint">How many of the ${D} days had at least one bowel movement with each.</p>
+        ${hbars(dayRows, { max: D, outOf: D })}
+        <h4 class="subhead">Days with each Bristol type</h4>
+        ${hbars(typeDayRows, { max: D, outOf: D })}
       </div>
 
       <div class="card">
@@ -467,42 +535,54 @@
       <div class="card">
         <h3>Average pain per day</h3>
         <div class="chart-wrap" data-chart="pain"></div>
-      </div>
+      </div>` : ''}
 
       <div class="card">
         <h3>Bristol type mix</h3>
-        ${hbars(BRISTOL.map((b, i) => ({ label: `${b.n} · ${b.name}`, count: typeCounts[i] })), n)}
+        <p class="hint card-hint">Number of bowel movements of each type.</p>
+        ${hbars(BRISTOL.map((b, i) => ({ label: `${b.n} · ${b.short || b.name}`, count: typeCounts[i] })))}
+      </div>
+
+      <div class="card">
+        <h3>Time of day</h3>
+        ${hbars(todCounts)}
       </div>
 
       <div class="card">
         <h3>Abnormalities</h3>
-        ${abnCounts.length ? hbars(abnCounts, n) : '<p>None recorded in this period.</p>'}
+        ${abnCounts.length ? hbars(abnCounts) : '<p>None recorded in this period.</p>'}
       </div>
 
+      ${multiDay ? `
       <div class="card">
         <details class="table-view">
           <summary>Daily table</summary>
           <table>
-            <thead><tr><th>Date</th><th>BMs</th><th>Avg type</th><th>Avg pain</th><th>Blood</th></tr></thead>
+            <thead><tr><th>Date</th><th>BMs</th><th>Avg type</th><th>Avg pain</th><th>Max pain</th><th>Blood</th></tr></thead>
             <tbody>
-              ${buckets.slice().reverse().map(b => `<tr><td>${esc(fmtShortDate(b.date))}</td><td>${b.count}</td><td>${b.avgBristol ?? '–'}</td><td>${b.avgPain ?? '–'}</td><td>${b.blood ? 'Yes' : ''}</td></tr>`).join('')}
+              ${buckets.slice().reverse().map(b => `<tr><td>${esc(fmtShortDate(b.date))}</td><td>${b.count}</td><td>${b.avgBristol ?? '–'}</td><td>${b.avgPain ?? '–'}</td><td>${b.maxPain ?? '–'}</td><td>${b.blood ? 'Yes' : ''}</td></tr>`).join('')}
             </tbody>
           </table>
         </details>
-      </div>`;
+      </div>` : ''}`;
 
-    lastBuckets = buckets;
+    lastBuckets = multiDay ? buckets : null;
     drawCharts();
   }
 
-  function hbars(rows, total) {
-    const max = Math.max(1, ...rows.map(r => r.count));
-    return rows.map(r => `
-      <div class="hbar-row" title="${esc(r.label)}: ${r.count} of ${total}">
+  // Horizontal bars. With `outOf`, values read "3/7" and bars scale to that total.
+  function hbars(rows, opts = {}) {
+    const max = Math.max(1, opts.max ?? Math.max(...rows.map(r => r.count)));
+    return rows.map(r => {
+      const val = opts.outOf ? `${r.count}/${opts.outOf}` : r.count;
+      const pct = opts.outOf ? ` (${Math.round(100 * r.count / opts.outOf)}%)` : '';
+      return `
+      <div class="hbar-row${opts.outOf ? ' wide-val' : ''}" title="${esc(r.label)}: ${val}${pct}">
         <span class="hbar-label">${esc(r.label)}</span>
-        <span class="hbar-track"><span class="hbar-fill" style="display:block;width:${r.count ? (100 * r.count / max) : 0}%"></span></span>
-        <span class="hbar-val">${r.count}</span>
-      </div>`).join('');
+        <span class="hbar-track"><span class="hbar-fill${r.flag ? ' flag' : ''}" style="display:block;width:${r.count ? (100 * r.count / max) : 0}%"></span></span>
+        <span class="hbar-val">${val}</span>
+      </div>`;
+    }).join('');
   }
 
   let lastBuckets = null;

@@ -1,6 +1,6 @@
 // Offline support: cache the app shell, serve it cache-first, refresh in the background.
 // Bump CACHE when shipping changes so clients pick up the new files.
-const CACHE = 'gutlog-v1';
+const CACHE = 'gutlog-v2';
 const ASSETS = [
   './',
   'index.html',

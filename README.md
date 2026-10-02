@@ -10,7 +10,7 @@ Track Crohn's symptoms during a flare. Gut Log is a small, private web app for l
 
 - **Log** — date/time, Bristol type (1–7, illustrated), pain 0–10, urgency, abnormalities (bright red blood, dark blood, black/tarry, mucus, pus, undigested food, greasy/floating, foul smell, straining, incomplete emptying, gas), color, and notes.
 - **History** — entries grouped by day; tap any entry to edit or delete it.
-- **Insights** — 7/30/90-day summaries: BMs per day, average pain per day, Bristol type mix, abnormality counts, days with blood, and a daily table.
+- **Insights** — summaries for Today, 7, 30, 90 days or all time: BMs per day (average and most in one day), average Bristol type and pain, **how many days** had pain (any / moderate / severe), blood, mucus, urgency, accidents, loose or hard stool, no BM, and each Bristol type; plus daily charts, type mix, time-of-day breakdown, abnormality counts and a daily table. Averages only count days since your first entry.
 - **Data** — download a JSON backup, export a CSV for a spreadsheet or your doctor, restore/merge from a backup, light/dark theme.
 
 ## Hosting on GitHub Pages
