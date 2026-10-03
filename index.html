@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Gut Log</title>
-  <meta name="description" content="Private, on-device tracker for bowel movements using the Bristol stool scale.">
+  <meta name="description" content="Private, on-device tracker for bowel movements (Bristol scale), food, drinks, stress and sleep, with possible food triggers.">
   <meta name="theme-color" content="#2a78d6">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Gut Log">
@@ -23,15 +23,23 @@
   <main>
     <!-- LOG -->
     <section id="view-log" class="view" aria-labelledby="log-title">
+      <div class="segmented log-switch" id="log-switch" role="radiogroup" aria-label="What are you logging?">
+        <label><input type="radio" name="logtype" value="bm" checked><span>Bowel</span></label>
+        <label><input type="radio" name="logtype" value="meal"><span>Food</span></label>
+        <label><input type="radio" name="logtype" value="drink"><span>Drink</span></label>
+        <label><input type="radio" name="logtype" value="day"><span>Check-in</span></label>
+      </div>
       <h2 id="log-title" class="view-title">Log a bowel movement</h2>
-      <form id="bm-form" novalidate>
+
+      <!-- Bowel movement -->
+      <form id="bm-form" class="log-form" data-type="bm" novalidate>
         <input type="hidden" name="id">
 
         <div class="field">
           <label for="f-when" class="label">When</label>
           <div class="row">
             <input id="f-when" name="when" type="datetime-local" required>
-            <button type="button" class="btn btn-ghost" id="btn-now">Now</button>
+            <button type="button" class="btn btn-ghost btn-now" data-for="f-when">Now</button>
           </div>
         </div>
 
@@ -67,10 +75,142 @@
           <textarea id="f-notes" name="notes" rows="3" placeholder="Anything else worth remembering…"></textarea>
         </div>
 
+        <div class="card subtle before-food hidden" id="bm-before-food"></div>
+
         <div class="form-actions">
-          <button type="submit" class="btn btn-primary" id="btn-save">Save entry</button>
-          <button type="button" class="btn btn-ghost hidden" id="btn-cancel">Cancel</button>
-          <button type="button" class="btn btn-danger hidden" id="btn-delete">Delete</button>
+          <button type="submit" class="btn btn-primary btn-save">Save entry</button>
+          <button type="button" class="btn btn-ghost btn-cancel hidden">Cancel</button>
+          <button type="button" class="btn btn-danger btn-delete hidden">Delete</button>
+        </div>
+      </form>
+
+      <!-- Food -->
+      <form id="meal-form" class="log-form hidden" data-type="meal" novalidate>
+        <input type="hidden" name="id">
+
+        <div class="field">
+          <label for="f-meal-when" class="label">When did you eat?</label>
+          <div class="row">
+            <input id="f-meal-when" type="datetime-local" required>
+            <button type="button" class="btn btn-ghost btn-now" data-for="f-meal-when">Now</button>
+          </div>
+        </div>
+
+        <fieldset class="field">
+          <legend class="label">Meal</legend>
+          <div class="segmented" id="mealtype-group"></div>
+        </fieldset>
+
+        <div class="field">
+          <label for="f-food-input" class="label">What did you eat? <span class="req">add at least one</span></label>
+          <div class="row">
+            <input id="f-food-input" type="text" list="food-suggest" autocomplete="off" autocapitalize="none" enterkeyhint="done" placeholder="e.g. pizza, coffee, salad">
+            <button type="button" class="btn" id="btn-add-food">Add</button>
+          </div>
+          <datalist id="food-suggest"></datalist>
+          <div class="item-chips" id="food-items" aria-live="polite"></div>
+          <div class="frequent hidden" id="food-frequent-wrap">
+            <p class="hint">Tap to add something you've had before:</p>
+            <div class="item-chips" id="food-frequent"></div>
+          </div>
+        </div>
+
+        <fieldset class="field">
+          <legend class="label">Tags <span class="opt">auto-filled from foods — adjust as needed</span></legend>
+          <div class="chips" id="tag-group"></div>
+        </fieldset>
+
+        <fieldset class="field">
+          <legend class="label">Portion</legend>
+          <div class="segmented" id="portion-group"></div>
+        </fieldset>
+
+        <div class="field">
+          <label for="f-meal-notes" class="label">Notes <span class="opt">optional</span></label>
+          <textarea id="f-meal-notes" rows="2" placeholder="Restaurant, ingredients, how you felt…"></textarea>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary btn-save">Save food</button>
+          <button type="button" class="btn btn-ghost btn-cancel hidden">Cancel</button>
+          <button type="button" class="btn btn-danger btn-delete hidden">Delete</button>
+        </div>
+      </form>
+
+      <!-- Drink -->
+      <form id="drink-form" class="log-form hidden" data-type="drink" novalidate>
+        <input type="hidden" name="id">
+        <p class="today-fluids" id="today-fluids"></p>
+
+        <div class="field">
+          <label for="f-drink-when" class="label">When</label>
+          <div class="row">
+            <input id="f-drink-when" type="datetime-local" required>
+            <button type="button" class="btn btn-ghost btn-now" data-for="f-drink-when">Now</button>
+          </div>
+        </div>
+
+        <fieldset class="field">
+          <legend class="label">Drink</legend>
+          <div class="chips" id="drink-group"></div>
+        </fieldset>
+
+        <div class="field">
+          <label for="f-drink-oz" class="label">Amount (oz)</label>
+          <div class="segmented" id="oz-group"></div>
+          <input id="f-drink-oz" class="num-input" type="number" inputmode="decimal" min="0" max="200" step="1" value="8" aria-label="Amount in ounces">
+        </div>
+
+        <div class="field">
+          <label for="f-drink-notes" class="label">Notes <span class="opt">optional</span></label>
+          <textarea id="f-drink-notes" rows="2" placeholder="Brand, what it was mixed with…"></textarea>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary btn-save">Save drink</button>
+          <button type="button" class="btn btn-ghost btn-cancel hidden">Cancel</button>
+          <button type="button" class="btn btn-danger btn-delete hidden">Delete</button>
+        </div>
+      </form>
+
+      <!-- Daily check-in -->
+      <form id="day-form" class="log-form hidden" data-type="day" novalidate>
+        <input type="hidden" name="id">
+
+        <div class="field">
+          <label for="f-day-date" class="label">Day</label>
+          <input id="f-day-date" type="date" required>
+          <p class="hint">One check-in per day. Picking a day you've already checked in loads it.</p>
+        </div>
+
+        <fieldset class="field">
+          <legend class="label">Stress today</legend>
+          <div class="segmented" id="stress-group"></div>
+        </fieldset>
+
+        <div class="field">
+          <label for="f-sleep-hours" class="label">Sleep last night (hours)</label>
+          <div class="row stepper">
+            <button type="button" class="btn" data-step="-0.5" aria-label="Less sleep">−</button>
+            <input id="f-sleep-hours" class="num-input" type="number" inputmode="decimal" min="0" max="16" step="0.5" placeholder="e.g. 7">
+            <button type="button" class="btn" data-step="0.5" aria-label="More sleep">+</button>
+          </div>
+        </div>
+
+        <fieldset class="field">
+          <legend class="label">Sleep quality</legend>
+          <div class="segmented" id="sleepq-group"></div>
+        </fieldset>
+
+        <div class="field">
+          <label for="f-day-notes" class="label">Notes <span class="opt">optional</span></label>
+          <textarea id="f-day-notes" rows="2" placeholder="Busy at work, travel, period, new medication…"></textarea>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary btn-save">Save check-in</button>
+          <button type="button" class="btn btn-ghost btn-cancel hidden">Cancel</button>
+          <button type="button" class="btn btn-danger btn-delete hidden">Delete</button>
         </div>
       </form>
     </section>
@@ -78,6 +218,13 @@
     <!-- HISTORY -->
     <section id="view-history" class="view hidden" aria-labelledby="history-title">
       <h2 id="history-title" class="view-title">History</h2>
+      <div class="segmented compact history-filter" id="history-filter" role="radiogroup" aria-label="Show">
+        <label><input type="radio" name="hfilter" value="all" checked><span>All</span></label>
+        <label><input type="radio" name="hfilter" value="bm"><span>Bowel</span></label>
+        <label><input type="radio" name="hfilter" value="meal"><span>Food</span></label>
+        <label><input type="radio" name="hfilter" value="drink"><span>Drinks</span></label>
+        <label><input type="radio" name="hfilter" value="day"><span>Check-ins</span></label>
+      </div>
       <div id="history-list"></div>
     </section>
 
@@ -88,6 +235,12 @@
         <div class="segmented compact" id="range-group" role="radiogroup" aria-label="Time range"></div>
       </div>
       <div id="insights"></div>
+    </section>
+
+    <!-- TRIGGERS -->
+    <section id="view-triggers" class="view hidden" aria-labelledby="triggers-title">
+      <h2 id="triggers-title" class="view-title">Food &amp; triggers</h2>
+      <div id="triggers"></div>
     </section>
 
     <!-- SETTINGS -->
@@ -104,6 +257,16 @@
           <input type="file" id="f-import" accept="application/json,.json" class="visually-hidden">
         </div>
         <p class="hint" id="data-summary"></p>
+      </div>
+
+      <div class="card">
+        <h3>Food reaction window</h3>
+        <p>Bowel movements this many hours after eating are linked to that food on the Triggers tab. 2–24 hours covers most food reactions; reactions in the first hour or two are usually the gut emptying from earlier meals.</p>
+        <div class="row window-row">
+          <label>From <input id="f-win-start" class="num-input" type="number" inputmode="numeric" min="0" max="71" step="1"> h</label>
+          <label>to <input id="f-win-end" class="num-input" type="number" inputmode="numeric" min="1" max="72" step="1"> h</label>
+          <button class="btn" id="btn-win-reset" type="button">Reset</button>
+        </div>
       </div>
 
       <div class="card">
@@ -130,6 +293,9 @@
     </button>
     <button data-view="history" class="tab">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>History</span>
+    </button>
+    <button data-view="triggers" class="tab">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg><span>Triggers</span>
     </button>
     <button data-view="insights" class="tab">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V12M12 20V5M19 20v-9"/></svg><span>Insights</span>
